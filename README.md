@@ -53,13 +53,14 @@ VALUES
 The connection is configured in `server/connection.php`:
 
 ```php
-$con = mysqli_connect("localhost", "root", "", "php_project");
+$con = mysqli_connect("localhost", "root", "", "php_project", 3308);
 ```
 
 - **Host:** localhost
 - **Username:** root
 - **Password:** (empty)
 - **Database:** php_project
+- **Port:** 3308
 
 ### 4. Run the Project
 
