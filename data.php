@@ -9,11 +9,12 @@ $site = [
     'copyright' => 'orange © 2026 All Rights Reserved',
 ];
 
+// Navbar links activated as shown in video 52: Activating navbar
 $navLinks = [
     ['label' => 'Home', 'href' => 'index.php#home'],
     ['label' => 'Shop', 'href' => 'index.php#products'],
-    ['label' => 'Blog', 'href' => 'index.php#featured'],
-    ['label' => 'Contact Us', 'href' => '#footer'],
+    ['label' => 'Blog', 'href' => '#'],
+    ['label' => 'Contact Us', 'href' => 'contact.php'],
 ];
 
 $hero = [
