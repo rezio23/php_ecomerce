@@ -2,32 +2,41 @@
 require __DIR__ . '/data.php';
 require __DIR__ . '/includes/functions.php';
 
-if (isset($_GET['add'])) {
-    $productId = (int) $_GET['add'];
-    $product = getProductById($products, $productId);
-
-    if ($product !== null) {
-        addToCart($productId, 1);
+// DB setup
+$use_db = false;
+$con    = null;
+if (file_exists(__DIR__ . '/server/connection.php')) {
+    @include_once __DIR__ . '/server/connection.php';
+    @include_once __DIR__ . '/server/products.php';
+    if (isset($con) && $con) {
+        $use_db = true;
     }
-
-    header('Location: index.php?added=1#products');
-    exit;
 }
 
-// Try to load featured products from the database (video 59: Get products)
-// Falls back to static data if DB is not available
-$use_db = false;
-$db_featured_products = null;
-$db_coats_products = null;
+// Category filter
+$activeCategory = isset($_GET['category']) ? strtolower(trim($_GET['category'])) : 'all';
+$categories = ['all', 'shoes', 'coats', 'dresses', 'shirts', 'bags'];
 
-if (file_exists(__DIR__ . '/server/connection.php')) {
-    @include_once __DIR__ . '/server/getFeaturedProducts.php';
-    @include_once __DIR__ . '/server/get_quotes.php';
-    if (isset($featured_products) && $featured_products !== false) {
-        $use_db = true;
-        $db_featured_products = $featured_products;
-        $db_coats_products = $coats_products ?? null;
+// Add to cart from index
+if (isset($_GET['add'])) {
+    $addId = (int) $_GET['add'];
+
+    $valid = false;
+    if ($use_db) {
+        $check = getProductFromDB($con, $addId);
+        $valid = ($check !== null);
+    } else {
+        $valid = (getProductById($products, $addId) !== null);
     }
+
+    if ($valid) {
+        addToCart($addId, 1);
+    }
+
+    $back = 'index.php?added=1';
+    if ($activeCategory !== 'all') $back .= '&category=' . urlencode($activeCategory);
+    header('Location: ' . $back . '#products');
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -47,11 +56,12 @@ if (file_exists(__DIR__ . '/server/connection.php')) {
 
     <?php if (isset($_GET['added'])): ?>
         <div class="notice-wrap">
-            <div class="container notice success">Product added to cart successfully.</div>
+            <div class="container notice success">Product added to cart. <a href="cart.php">View Cart</a></div>
         </div>
     <?php endif; ?>
 
     <main>
+        <!-- Hero -->
         <section class="hero section-space">
             <div class="container hero-grid">
                 <div class="hero-content">
@@ -62,54 +72,72 @@ if (file_exists(__DIR__ . '/server/connection.php')) {
                         <?= htmlspecialchars($hero['button_text']) ?>
                     </a>
                 </div>
-
                 <div class="hero-image-wrap">
-                    <img src="<?= htmlspecialchars($hero['image']) ?>" alt="<?= htmlspecialchars($hero['image_alt']) ?>" class="hero-image">
+                    <img src="<?= htmlspecialchars($hero['image']) ?>"
+                         alt="<?= htmlspecialchars($hero['image_alt']) ?>"
+                         class="hero-image">
                 </div>
             </div>
         </section>
 
-        <!-- Featured Products Section -->
-        <!-- Video 59: Get products from DB using while($row = $result->fetch_assoc()) loop -->
+        <!-- Products Section -->
         <section class="products-section section-space" id="products">
             <div class="container">
                 <div class="section-header left-align">
-                    <span>Our Products</span>
-                    <h2>Featured Products</h2>
-                    <p>
-                        <?php if ($use_db): ?>
-                            Products loaded from the database (php_project).
-                        <?php else: ?>
-                            Click any product to open the single product page. Connect to a MySQL database to load products dynamically.
-                        <?php endif; ?>
-                    </p>
+                    <span>Our Collection</span>
+                    <h2>Shop Products</h2>
                 </div>
 
+                <!-- Category Filter Tabs -->
+                <div class="category-tabs">
+                    <?php foreach ($categories as $cat): ?>
+                        <a href="index.php?category=<?= urlencode($cat) ?>#products"
+                           class="category-tab <?= $activeCategory === $cat ? 'active' : '' ?>">
+                            <?= ucfirst($cat) ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Product Grid -->
                 <div class="product-grid">
-                    <?php if ($use_db && $db_featured_products): ?>
-                        <?php while ($row = $db_featured_products->fetch_assoc()): ?>
+                    <?php if ($use_db): ?>
+                        <?php
+                        $result = getProductsFromDB($con, $activeCategory);
+                        $count = 0;
+                        while ($row = $result->fetch_assoc()):
+                            $p = dbRowToProduct($row);
+                            $count++;
+                        ?>
                             <article class="product-card">
-                                <div class="product-image-wrap">
-                                    <img src="<?= htmlspecialchars($row['product_image']) ?>"
-                                         alt="<?= htmlspecialchars($row['product_name']) ?>"
-                                         class="product-image">
-                                </div>
+                                <a class="product-thumb-link" href="singleproduct.php?id=<?= (int)$p['id'] ?>">
+                                    <div class="product-image-wrap">
+                                        <img src="<?= htmlspecialchars($p['image']) ?>"
+                                             alt="<?= htmlspecialchars($p['name']) ?>"
+                                             class="product-image" loading="lazy">
+                                    </div>
+                                </a>
                                 <div class="product-meta-top">
-                                    <span class="product-category"><?= htmlspecialchars($row['product_category']) ?></span>
-                                    <?php if (!empty($row['product_special_offer'])): ?>
-                                        <span class="product-tag"><?= (int)$row['product_special_offer'] ?>% OFF</span>
+                                    <span class="product-category"><?= htmlspecialchars(ucfirst($p['category'])) ?></span>
+                                    <?php if ($p['special_offer'] > 0): ?>
+                                        <span class="product-tag"><?= (int)$p['special_offer'] ?>% OFF</span>
                                     <?php endif; ?>
                                 </div>
-                                <a class="product-title-link" href="singleproduct.php?id=<?= (int)$row['product_id'] ?>">
-                                    <h3 class="product-name"><?= htmlspecialchars($row['product_name']) ?></h3>
+                                <a class="product-title-link" href="singleproduct.php?id=<?= (int)$p['id'] ?>">
+                                    <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
                                 </a>
-                                <p class="product-price">$<?= number_format((float)$row['product_price'], 0) ?></p>
+                                <?= renderStars(5) ?>
+                                <p class="product-price"><?= money((float)$p['price']) ?></p>
                                 <div class="product-actions">
-                                    <a class="details-btn" href="singleproduct.php?id=<?= (int)$row['product_id'] ?>">View Details</a>
-                                    <a class="buy-btn" href="index.php?add=<?= (int)$row['product_id'] ?>#products">Add To Cart</a>
+                                    <a class="details-btn" href="singleproduct.php?id=<?= (int)$p['id'] ?>">View Details</a>
+                                    <a class="buy-btn" href="index.php?add=<?= (int)$p['id'] ?>&category=<?= urlencode($activeCategory) ?>#products">Add To Cart</a>
                                 </div>
                             </article>
                         <?php endwhile; ?>
+
+                        <?php if ($count === 0): ?>
+                            <p class="no-products">No products found in this category.</p>
+                        <?php endif; ?>
+
                     <?php else: ?>
                         <?php foreach ($products as $product): ?>
                             <?= renderProductCard($product) ?>
@@ -118,46 +146,6 @@ if (file_exists(__DIR__ . '/server/connection.php')) {
                 </div>
             </div>
         </section>
-
-        <!-- Coats / Category Section -->
-        <!-- Video 60: Get coats from DB WHERE product_category = 'coats' -->
-        <?php if ($use_db && $db_coats_products): ?>
-        <section class="products-section section-space" id="coats">
-            <div class="container">
-                <div class="section-header left-align">
-                    <span>Collection</span>
-                    <h2>Coats</h2>
-                    <p>Coats loaded from the database where product_category = 'coats'.</p>
-                </div>
-
-                <div class="product-grid">
-                    <?php while ($row = $db_coats_products->fetch_assoc()): ?>
-                        <article class="product-card">
-                            <div class="product-image-wrap">
-                                <img src="<?= htmlspecialchars($row['product_image']) ?>"
-                                     alt="<?= htmlspecialchars($row['product_name']) ?>"
-                                     class="product-image">
-                            </div>
-                            <div class="product-meta-top">
-                                <span class="product-category"><?= htmlspecialchars($row['product_category']) ?></span>
-                                <?php if (!empty($row['product_special_offer'])): ?>
-                                    <span class="product-tag"><?= (int)$row['product_special_offer'] ?>% OFF</span>
-                                <?php endif; ?>
-                            </div>
-                            <a class="product-title-link" href="singleproduct.php?id=<?= (int)$row['product_id'] ?>">
-                                <h3 class="product-name"><?= htmlspecialchars($row['product_name']) ?></h3>
-                            </a>
-                            <p class="product-price">$<?= number_format((float)$row['product_price'], 0) ?></p>
-                            <div class="product-actions">
-                                <a class="details-btn" href="singleproduct.php?id=<?= (int)$row['product_id'] ?>">View Details</a>
-                                <a class="buy-btn" href="index.php?add=<?= (int)$row['product_id'] ?>#coats">Add To Cart</a>
-                            </div>
-                        </article>
-                    <?php endwhile; ?>
-                </div>
-            </div>
-        </section>
-        <?php endif; ?>
     </main>
 
     <?php require __DIR__ . '/includes/footer.php'; ?>

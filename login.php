@@ -1,6 +1,35 @@
 <?php
 require __DIR__ . '/data.php';
 require __DIR__ . '/includes/functions.php';
+
+// Already logged in?
+if (isLoggedIn()) {
+    header('Location: account.php');
+    exit;
+}
+
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require __DIR__ . '/server/connection.php';
+    require __DIR__ . '/server/auth.php';
+
+    $email    = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+
+    $result = authLogin($con, $email, $password);
+
+    if ($result['success']) {
+        $_SESSION['user_id']   = $result['user']['user_id'];
+        $_SESSION['user_name'] = $result['user']['user_name'];
+
+        $redirect = $_GET['redirect'] ?? 'account.php';
+        header('Location: ' . $redirect);
+        exit;
+    } else {
+        $error = $result['error'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -18,29 +47,38 @@ require __DIR__ . '/includes/functions.php';
     <?php require __DIR__ . '/includes/header.php'; ?>
 
     <main>
-        <section class="auth-section my-5 py-5">
-            <div class="container text-center mt-3 pt-5">
-                <h2 class="auth-title">Login</h2>
-                <hr class="auth-divider">
-            </div>
+        <section class="auth-section">
+            <div class="auth-card">
+                <h2 class="auth-title">Welcome back</h2>
+                <p class="auth-subtitle">Sign in to your account</p>
 
-            <div class="auth-form-wrap mx-auto container">
-                <form id="login-form" action="login.php" method="post">
+                <?php if ($error): ?>
+                    <div class="notice error"><?= htmlspecialchars($error) ?></div>
+                <?php endif; ?>
+
+                <form id="login-form" action="login.php<?= isset($_GET['redirect']) ? '?redirect=' . urlencode($_GET['redirect']) : '' ?>" method="post">
                     <div class="form-group">
                         <label for="login-email">Email</label>
-                        <input type="text" class="field-control" id="login-email" name="email" placeholder="Email">
+                        <input type="email" class="field-control" id="login-email" name="email"
+                               placeholder="you@example.com"
+                               value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
                     </div>
                     <div class="form-group">
                         <label for="login-password">Password</label>
-                        <input type="password" class="field-control" id="login-password" name="password" placeholder="Password">
+                        <input type="password" class="field-control" id="login-password" name="password"
+                               placeholder="Your password" required>
                     </div>
                     <div class="form-group">
-                        <input type="submit" class="primary-btn full-btn" id="login-btn" value="Login">
+                        <button type="submit" class="primary-btn full-btn">Sign In</button>
                     </div>
                     <div class="form-group text-center">
-                        <a href="register.php" class="auth-link">Don't have account? Register</a>
+                        <a href="register.php" class="auth-link">Don't have an account? <strong>Register</strong></a>
                     </div>
                 </form>
+
+                <div class="auth-demo-hint">
+                    <p>Demo: <code>alice@example.com</code> / <code>password123</code></p>
+                </div>
             </div>
         </section>
     </main>

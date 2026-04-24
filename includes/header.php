@@ -1,5 +1,7 @@
 <?php
 $cartCount = getCartCount();
+$_isLoggedIn = isLoggedIn();
+$_userName = $_isLoggedIn ? htmlspecialchars($_SESSION['user_name'] ?? 'Account') : '';
 ?>
 <header class="site-header" id="home">
     <div class="container navbar">
@@ -12,11 +14,22 @@ $cartCount = getCartCount();
         </nav>
 
         <div class="nav-icons">
-            <a href="index.php#products" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></a>
-            <a href="account.php" aria-label="Account"><i class="fa-regular fa-user"></i></a>
+            <a href="index.php#products" aria-label="Shop"><i class="fa-solid fa-magnifying-glass"></i></a>
+
+            <?php if ($_isLoggedIn): ?>
+                <a href="account.php" aria-label="My Account" class="nav-user-link">
+                    <i class="fa-regular fa-user"></i>
+                    <span class="nav-username"><?= $_userName ?></span>
+                </a>
+            <?php else: ?>
+                <a href="login.php" aria-label="Login"><i class="fa-regular fa-user"></i></a>
+            <?php endif; ?>
+
             <a href="cart.php" aria-label="Shopping bag" class="cart-link">
                 <i class="fa-solid fa-bag-shopping"></i>
-                <span class="cart-count"><?= $cartCount ?></span>
+                <?php if ($cartCount > 0): ?>
+                    <span class="cart-count"><?= $cartCount ?></span>
+                <?php endif; ?>
             </a>
         </div>
     </div>

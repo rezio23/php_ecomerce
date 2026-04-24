@@ -1,33 +1,34 @@
 <?php
 require __DIR__ . '/data.php';
 require __DIR__ . '/includes/functions.php';
+requireLogin();
 
-// Sample static account data (as shown in the videos)
-$accountUser = [
-    'name' => 'Sombath',
-    'email' => 'sombath@email.com',
-];
+require __DIR__ . '/server/connection.php';
+require __DIR__ . '/server/auth.php';
+require __DIR__ . '/server/orders.php';
 
-// Sample orders data (as shown in video 49)
-$orders = [
-    [
-        'product' => [
-            'name'  => 'Classic White Sneakers',
-            'image' => 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=80&q=80',
-        ],
-        'date' => '2026-4-9',
-    ],
-    [
-        'product' => [
-            'name'  => 'Mint Travel Backpack',
-            'image' => 'https://images.unsplash.com/photo-1581605405669-fcdf81165afa?auto=format&fit=crop&w=80&q=80',
-        ],
-        'date' => '2026-4-9',
-    ],
-];
+$currentUser = getCurrentUser($con);
+$section = $_GET['section'] ?? 'info'; // info | orders | password
 
-// Determine which section to show
-$showOrders = isset($_GET['section']) && $_GET['section'] === 'orders';
+$successMsg = '';
+$errorMsg   = '';
+
+// Handle change-password POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
+    $current = $_POST['current_password'] ?? '';
+    $newPass = $_POST['new_password'] ?? '';
+    $confirm = $_POST['confirm_password'] ?? '';
+    $result  = authChangePassword($con, (int) $_SESSION['user_id'], $current, $newPass, $confirm);
+    if ($result['success']) {
+        $successMsg = 'Password changed successfully.';
+        $section = 'password';
+    } else {
+        $errorMsg = $result['error'];
+        $section  = 'password';
+    }
+}
+
+$orders = ($section === 'orders') ? getUserOrders($con, (int) $_SESSION['user_id']) : [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -45,78 +46,141 @@ $showOrders = isset($_GET['section']) && $_GET['section'] === 'orders';
     <?php require __DIR__ . '/includes/header.php'; ?>
 
     <main>
-        <?php if ($showOrders): ?>
-        <!-- Orders Section -->
-        <section class="orders container my-5 py-5">
-            <div class="container text-center mt-3 pt-5">
-                <h2 class="auth-title">Your Orders</h2>
-                <hr class="auth-divider">
-            </div>
+        <section class="account-section section-space">
+            <div class="container">
+                <div class="account-layout">
 
-            <table class="mt-5 pt-5">
-                <thead>
-                    <tr>
-                        <th>Product</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($orders as $order): ?>
-                    <tr>
-                        <td>
-                            <div class="product-info">
-                                <img src="<?= htmlspecialchars($order['product']['image']) ?>" alt="<?= htmlspecialchars($order['product']['name']) ?>">
-                                <div>
-                                    <p class="mt-3"><?= htmlspecialchars($order['product']['name']) ?></p>
+                    <!-- Sidebar -->
+                    <aside class="account-sidebar">
+                        <div class="account-avatar">
+                            <div class="avatar-circle">
+                                <?= strtoupper(substr($currentUser['user_name'] ?? 'U', 0, 1)) ?>
+                            </div>
+                            <p class="avatar-name"><?= htmlspecialchars($currentUser['user_name'] ?? '') ?></p>
+                            <p class="avatar-email"><?= htmlspecialchars($currentUser['user_email'] ?? '') ?></p>
+                        </div>
+                        <nav class="account-nav">
+                            <a href="account.php?section=info" class="account-nav-item <?= $section === 'info' ? 'active' : '' ?>">
+                                <i class="fa-regular fa-user"></i> Account Info
+                            </a>
+                            <a href="account.php?section=orders" class="account-nav-item <?= $section === 'orders' ? 'active' : '' ?>">
+                                <i class="fa-solid fa-box"></i> My Orders
+                            </a>
+                            <a href="account.php?section=password" class="account-nav-item <?= $section === 'password' ? 'active' : '' ?>">
+                                <i class="fa-solid fa-lock"></i> Change Password
+                            </a>
+                            <a href="logout.php" class="account-nav-item account-nav-logout">
+                                <i class="fa-solid fa-right-from-bracket"></i> Logout
+                            </a>
+                        </nav>
+                    </aside>
+
+                    <!-- Main Content -->
+                    <div class="account-content">
+
+                        <?php if ($successMsg): ?>
+                            <div class="notice success"><?= htmlspecialchars($successMsg) ?></div>
+                        <?php endif; ?>
+                        <?php if ($errorMsg): ?>
+                            <div class="notice error"><?= htmlspecialchars($errorMsg) ?></div>
+                        <?php endif; ?>
+
+                        <!-- Account Info -->
+                        <?php if ($section === 'info'): ?>
+                            <div class="account-panel">
+                                <h2 class="account-panel-title">Account Information</h2>
+                                <div class="account-info-grid">
+                                    <div class="account-info-item">
+                                        <span class="info-label">Full Name</span>
+                                        <span class="info-value"><?= htmlspecialchars($currentUser['user_name'] ?? '') ?></span>
+                                    </div>
+                                    <div class="account-info-item">
+                                        <span class="info-label">Email Address</span>
+                                        <span class="info-value"><?= htmlspecialchars($currentUser['user_email'] ?? '') ?></span>
+                                    </div>
+                                    <div class="account-info-item">
+                                        <span class="info-label">Member Since</span>
+                                        <span class="info-value">2026</span>
+                                    </div>
+                                </div>
+                                <div class="account-info-actions">
+                                    <a href="account.php?section=orders" class="secondary-btn">View My Orders</a>
+                                    <a href="index.php#products" class="primary-btn">Continue Shopping</a>
                                 </div>
                             </div>
-                        </td>
-                        <td>
-                            <span><?= htmlspecialchars($order['date']) ?></span>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </section>
 
-        <?php else: ?>
-        <!-- Account Info + Change Password -->
-        <section class="my-5 py-5">
-            <div class="row container mx-auto">
-                <!-- Left: Account Info -->
-                <div class="account-info-col text-center mt-3 pt-5 col-lg-6 col-md-12 col-sm-12">
-                    <h3 class="font-weight-bold">Account info</h3>
-                    <hr class="auth-divider mx-auto">
-                    <div id="account-info" class="account-info">
-                        <p>Name: <span><?= htmlspecialchars($accountUser['name']) ?></span></p>
-                        <p>Email: <span><?= htmlspecialchars($accountUser['email']) ?></span></p>
-                        <p><a href="account.php?section=orders" id="order-btn">Your orders</a></p>
-                        <p><a href="login.php" id="logout-btn">Logout</a></p>
-                    </div>
-                </div>
+                        <!-- Orders -->
+                        <?php elseif ($section === 'orders'): ?>
+                            <div class="account-panel">
+                                <h2 class="account-panel-title">My Orders</h2>
 
-                <!-- Right: Change Password -->
-                <div class="col-lg-6 col-md-12 col-sm-12">
-                    <form id="account-form" action="account.php" method="post">
-                        <h3>Change Password</h3>
-                        <hr class="auth-divider mx-auto">
-                        <div class="form-group">
-                            <label for="account-password">Password</label>
-                            <input type="password" class="field-control" id="account-password" name="password" placeholder="New Password">
-                        </div>
-                        <div class="form-group">
-                            <label for="account-confirm-password">Confirm Password</label>
-                            <input type="password" class="field-control" id="account-confirm-password" name="confirmPassword" placeholder="Confirm Password">
-                        </div>
-                        <div class="form-group">
-                            <input type="submit" class="primary-btn" id="change-pass-btn" value="Change Password">
-                        </div>
-                    </form>
-                </div>
+                                <?php if (empty($orders)): ?>
+                                    <div class="empty-state">
+                                        <i class="fa-solid fa-box-open"></i>
+                                        <p>No orders yet.</p>
+                                        <a href="index.php#products" class="primary-btn">Start Shopping</a>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="orders-table-wrap">
+                                        <table class="orders-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Product</th>
+                                                    <th>Order #</th>
+                                                    <th>Status</th>
+                                                    <th>Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($orders as $order): ?>
+                                                <tr>
+                                                    <td>
+                                                        <div class="order-product-cell">
+                                                            <img src="<?= htmlspecialchars($order['product_image']) ?>"
+                                                                 alt="<?= htmlspecialchars($order['product_name']) ?>">
+                                                            <span><?= htmlspecialchars($order['product_name']) ?></span>
+                                                        </div>
+                                                    </td>
+                                                    <td>#<?= (int) $order['order_id'] ?></td>
+                                                    <td><?= statusBadge($order['order_status']) ?></td>
+                                                    <td><?= date('M j, Y', strtotime($order['order_date'])) ?></td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                        <!-- Change Password -->
+                        <?php elseif ($section === 'password'): ?>
+                            <div class="account-panel">
+                                <h2 class="account-panel-title">Change Password</h2>
+                                <form action="account.php?section=password" method="post" class="password-form">
+                                    <div class="form-group">
+                                        <label for="current_password">Current Password</label>
+                                        <input type="password" class="field-control" id="current_password"
+                                               name="current_password" placeholder="Current password" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="new_password">New Password</label>
+                                        <input type="password" class="field-control" id="new_password"
+                                               name="new_password" placeholder="Min. 6 characters" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="confirm_password">Confirm New Password</label>
+                                        <input type="password" class="field-control" id="confirm_password"
+                                               name="confirm_password" placeholder="Repeat new password" required>
+                                    </div>
+                                    <button type="submit" name="change_password" class="primary-btn">Update Password</button>
+                                </form>
+                            </div>
+                        <?php endif; ?>
+
+                    </div><!-- /.account-content -->
+                </div><!-- /.account-layout -->
             </div>
         </section>
-        <?php endif; ?>
     </main>
 
     <?php require __DIR__ . '/includes/footer.php'; ?>

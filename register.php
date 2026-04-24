@@ -1,6 +1,37 @@
 <?php
 require __DIR__ . '/data.php';
 require __DIR__ . '/includes/functions.php';
+
+if (isLoggedIn()) {
+    header('Location: account.php');
+    exit;
+}
+
+$error   = '';
+$success = '';
+$posted  = ['name' => '', 'email' => ''];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require __DIR__ . '/server/connection.php';
+    require __DIR__ . '/server/auth.php';
+
+    $name     = trim($_POST['name'] ?? '');
+    $email    = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirm  = $_POST['confirmPassword'] ?? '';
+    $posted   = ['name' => $name, 'email' => $email];
+
+    $result = authRegister($con, $name, $email, $password, $confirm);
+
+    if ($result['success']) {
+        $_SESSION['user_id']   = $result['user_id'];
+        $_SESSION['user_name'] = $result['user_name'];
+        header('Location: account.php');
+        exit;
+    } else {
+        $error = $result['error'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -18,35 +49,43 @@ require __DIR__ . '/includes/functions.php';
     <?php require __DIR__ . '/includes/header.php'; ?>
 
     <main>
-        <section class="auth-section my-5 py-5">
-            <div class="container text-center mt-3 pt-5">
-                <h2 class="auth-title">Register</h2>
-                <hr class="auth-divider">
-            </div>
+        <section class="auth-section">
+            <div class="auth-card">
+                <h2 class="auth-title">Create account</h2>
+                <p class="auth-subtitle">Join us and start shopping</p>
 
-            <div class="auth-form-wrap mx-auto container">
+                <?php if ($error): ?>
+                    <div class="notice error"><?= htmlspecialchars($error) ?></div>
+                <?php endif; ?>
+
                 <form id="register-form" action="register.php" method="post">
                     <div class="form-group">
-                        <label for="register-name">Name</label>
-                        <input type="text" class="field-control" id="register-name" name="name" placeholder="Name" required>
+                        <label for="register-name">Full Name</label>
+                        <input type="text" class="field-control" id="register-name" name="name"
+                               placeholder="Your name"
+                               value="<?= htmlspecialchars($posted['name']) ?>" required>
                     </div>
                     <div class="form-group">
                         <label for="register-email">Email</label>
-                        <input type="text" class="field-control" id="register-email" name="email" placeholder="Email" required>
+                        <input type="email" class="field-control" id="register-email" name="email"
+                               placeholder="you@example.com"
+                               value="<?= htmlspecialchars($posted['email']) ?>" required>
                     </div>
                     <div class="form-group">
                         <label for="register-password">Password</label>
-                        <input type="password" class="field-control" id="register-password" name="password" placeholder="Password" required>
+                        <input type="password" class="field-control" id="register-password" name="password"
+                               placeholder="Min. 6 characters" required>
                     </div>
                     <div class="form-group">
                         <label for="register-confirm-password">Confirm Password</label>
-                        <input type="password" class="field-control" id="register-confirm-password" name="confirmPassword" placeholder="Password" required>
+                        <input type="password" class="field-control" id="register-confirm-password"
+                               name="confirmPassword" placeholder="Repeat password" required>
                     </div>
                     <div class="form-group">
-                        <input type="submit" class="primary-btn full-btn" id="login-btn" value="Register">
+                        <button type="submit" class="primary-btn full-btn">Create Account</button>
                     </div>
                     <div class="form-group text-center">
-                        <a href="login.php" id="login-url" class="auth-link">Do you have an account? Login</a>
+                        <a href="login.php" class="auth-link">Already have an account? <strong>Sign In</strong></a>
                     </div>
                 </form>
             </div>
