@@ -90,7 +90,7 @@ if (file_exists(__DIR__ . '/server/connection.php')) {
                         <?php while ($row = $db_featured_products->fetch_assoc()): ?>
                             <article class="product-card">
                                 <div class="product-image-wrap">
-                                    <img src="assets/images/<?= htmlspecialchars($row['product_image']) ?>"
+                                    <img src="<?= htmlspecialchars($row['product_image']) ?>"
                                          alt="<?= htmlspecialchars($row['product_name']) ?>"
                                          class="product-image">
                                 </div>
@@ -134,7 +134,7 @@ if (file_exists(__DIR__ . '/server/connection.php')) {
                     <?php while ($row = $db_coats_products->fetch_assoc()): ?>
                         <article class="product-card">
                             <div class="product-image-wrap">
-                                <img src="assets/images/<?= htmlspecialchars($row['product_image']) ?>"
+                                <img src="<?= htmlspecialchars($row['product_image']) ?>"
                                      alt="<?= htmlspecialchars($row['product_name']) ?>"
                                      class="product-image">
                             </div>
