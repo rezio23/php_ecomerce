@@ -11,9 +11,9 @@ $site = [
 
 // Navbar links activated as shown in video 52: Activating navbar
 $navLinks = [
-    ['label' => 'Home', 'href' => 'index.php#home'],
-    ['label' => 'Shop', 'href' => 'index.php#products'],
-    ['label' => 'Blog', 'href' => '#'],
+    ['label' => 'Home',       'href' => 'index.php#home'],
+    ['label' => 'Shop',       'href' => 'shop.php'],
+    ['label' => 'Blog',       'href' => 'blog.php'],
     ['label' => 'Contact Us', 'href' => 'contact.php'],
 ];
 
